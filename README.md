@@ -6,8 +6,8 @@ A two-level module, with an interactive website, on how a traffic signal control
 
 | Level | What you learn | Online | Study guide | Slides |
 |---|---|---|---|---|
-| **Foundation** (beginner) | Agent, state, action, reward; return and discount; the Q-table and its update rule; random moves and table moves (epsilon-greedy); reading a trained table; from table to neural network (DQN); designing a signal agent | [Interactive lesson](https://smrahmanbd.github.io/rl-atsc-lab/foundation.html): six steps and one extra, with a live junction, a Q-table and a small neural network | [PDF](docs/materials/RL_Foundation_Study_Guide.pdf) | [PPTX](docs/materials/RL_Foundation_Presentation.pptx) · [PDF](docs/materials/RL_Foundation_Presentation.pdf) |
-| **Research** | Where RL sits among fixed-time, actuated, adaptive and max-pressure control; pressure; landmark methods from IntelliLight to language-model hybrids; multi-agent control; fair testing; seven gaps; eight research ideas | [Research page](https://smrahmanbd.github.io/rl-atsc-lab/research.html) with a pressure calculator, timeline, gap explorer and idea cards | [PDF](docs/materials/RL_Research_Study_Guide.pdf) | [PPTX](docs/materials/RL_Research_Presentation.pptx) · [PDF](docs/materials/RL_Research_Presentation.pdf) |
+| **Foundation** (beginner) | Agent, state, action, reward; return and discount; the Q-table and its update rule; random moves and table moves (epsilon-greedy); reading a trained table; from table to neural network (DQN); designing a signal agent | [Interactive lesson](https://smrahmanbd.github.io/rl-atsc-lab/foundation.html): six steps and one extra, with a live junction, a Q-table and a small neural network. [Rooms example](https://smrahmanbd.github.io/rl-atsc-lab/rooms.html): the lecture's five-rooms Q-learning example, where you move the agent and watch the Q matrix update | [Read online](https://smrahmanbd.github.io/rl-atsc-lab/viewer.html?doc=materials/RL_Foundation_Study_Guide.pdf&mode=guide) · [PDF](docs/materials/RL_Foundation_Study_Guide.pdf) | Topic 10, *Reinforcement Learning: An Overview* (54 slides): [open in the site](https://smrahmanbd.github.io/rl-atsc-lab/viewer.html?doc=materials/RL_Foundation_Presentation.pdf&mode=slides&dl=materials/RL_Foundation_Presentation.pptx) · [PPTX](docs/materials/RL_Foundation_Presentation.pptx) · [PDF](docs/materials/RL_Foundation_Presentation.pdf) |
+| **Research** | Where RL sits among fixed-time, actuated, adaptive and max-pressure control; pressure; landmark methods from IntelliLight to language-model hybrids; multi-agent control; fair testing; seven gaps; eight research ideas | [Research page](https://smrahmanbd.github.io/rl-atsc-lab/research.html) with a pressure calculator, timeline, gap explorer and idea cards | [Read online](https://smrahmanbd.github.io/rl-atsc-lab/viewer.html?doc=materials/RL_Research_Study_Guide.pdf&mode=guide) · [PDF](docs/materials/RL_Research_Study_Guide.pdf) | [Open in the site](https://smrahmanbd.github.io/rl-atsc-lab/viewer.html?doc=materials/RL_Research_Presentation.pdf&mode=slides&dl=materials/RL_Research_Presentation.pptx) · [PPTX](docs/materials/RL_Research_Presentation.pptx) · [PDF](docs/materials/RL_Research_Presentation.pdf) |
 
 ## What is in the repository
 
@@ -15,6 +15,8 @@ A two-level module, with an interactive website, on how a traffic signal control
 docs/                 the website (GitHub Pages serves this folder)
   index.html          home
   foundation.html     the interactive lesson (self-contained, no build step)
+  rooms.html          the lecture's five-rooms Q-learning example, interactive
+  viewer.html         opens the slides and study guides inside the site (pdf.js)
   research.html       the research page
   materials/          study guides (PDF) and slide decks (PPTX and PDF)
 code/
@@ -23,6 +25,10 @@ research/
   literature.md       reference list, gap table and research ideas
   references.json     the same references as data
 ```
+
+## The Foundation slides
+
+The Foundation deck is the course lecture *Topic 10, Reinforcement Learning: An Overview*. In PowerPoint's slide show the rooms example builds up click by click, and slide 33 is clickable: pick a starting room to jump to its best route, then use the Back button. The in-site viewer shows the PDF version, so animations and clickable rooms need the downloaded PPTX (or the viewer's *Play in PowerPoint Online* button).
 
 ## Run the code
 

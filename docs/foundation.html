@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foundation · RL ATSC Lab</title>
+<meta name="description" content="A six-step interactive lesson where a Q-table and then a small neural network learn to control a traffic signal.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="css/site.css">
+<style>
+/* Layout: a five-step lesson. Each step = short text + the same live intersection + the learner's "brain" beside it. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --surface2:#E4E9EE; --fg:#18222D; --muted:#566473; --line:#CFD7DF;
+  --accent:#1D5FD1; --accent-fg:#FFFFFF;
+  --ground:#DCE5E0; --road:#3A434C; --mark:#D5DCE2;
+  --ns:#3F9BE6; --ew:#B978E0; --keep:#17897A; --switch:#D2582F;
+  --go:#2FBF6B; --wait:#F1C232; --stop:#E5484D; --lampoff:#59626B;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#10151B; --surface:#19212A; --surface2:#232D38; --fg:#E8EDF2; --muted:#9BA9B7; --line:#303C49;
+  --accent:#82B2FF; --accent-fg:#0C1420;
+  --ground:#17221F; --road:#3A444F; --mark:#8894A0;
+  --ns:#62B4F5; --ew:#CD97EE; --keep:#3CC2AE; --switch:#F08A63;
+  --go:#3DD17C; --wait:#F5CD4A; --stop:#F0616A; --lampoff:#1D242B; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#10151B; --surface:#19212A; --surface2:#232D38; --fg:#E8EDF2; --muted:#9BA9B7; --line:#303C49;
+  --accent:#82B2FF; --accent-fg:#0C1420;
+  --ground:#17221F; --road:#3A444F; --mark:#8894A0;
+  --ns:#62B4F5; --ew:#CD97EE; --keep:#3CC2AE; --switch:#F08A63;
+  --go:#3DD17C; --wait:#F5CD4A; --stop:#F0616A; --lampoff:#1D242B; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--body)}
+.wrap{max-width:1040px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(26px,4.4vw,38px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:22px;font-weight:600}
+h3{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+p{margin:0;max-width:68ch}
+.lede{color:var(--muted);font-size:16px}
+header{display:flex;flex-direction:column;gap:8px}
+
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+.steps button{font:500 13px var(--body);color:var(--muted);background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px 7px 8px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.steps b{font:600 12px var(--display);width:22px;height:22px;border-radius:50%;background:var(--surface2);color:var(--fg);
+  display:grid;place-items:center}
+.steps button[aria-current="step"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.steps button[aria-current="step"] b{background:var(--bg);color:var(--fg)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;min-width:0;
+  display:flex;flex-direction:column;gap:12px}
+.lesson{gap:14px}
+.lesson .cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px}
+.lesson .text{display:flex;flex-direction:column;gap:10px}
+.try{background:var(--surface2);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.try ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.vocab{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0}
+.vocab dt{font-weight:600}.vocab dd{margin:0;color:var(--muted)}
+table.cmp{border-collapse:collapse;font-size:13.5px;width:100%}
+table.cmp th,table.cmp td{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+table.cmp th{font-weight:600}
+.scroll{overflow-x:auto}
+
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button.btn{font:600 14px var(--body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  padding:9px 14px;cursor:pointer}
+button.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);min-width:92px}
+button.btn.keep{border-color:var(--keep);color:var(--keep)} button.btn.switch{border-color:var(--switch);color:var(--switch)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{font:500 13px var(--body);border:0;background:transparent;color:var(--muted);padding:9px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface2);color:var(--fg);font-weight:600}
+.spacer{flex:1}
+
+.stage{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:18px;align-items:start}
+canvas{display:block;width:100%;border-radius:8px}
+#road{aspect-ratio:1;max-width:100%}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--surface2);border-radius:8px;padding:8px 10px}
+.stat span{display:block;font-size:11.5px;color:var(--muted);line-height:1.3}
+.stat strong{font:600 18px var(--display);font-variant-numeric:tabular-nums}
+.side{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+.qgrids{display:flex;flex-wrap:wrap;gap:18px}
+.qt{border-collapse:separate;border-spacing:3px;font-size:12px;font-variant-numeric:tabular-nums}
+.qt caption{text-align:left;font-weight:600;font-size:13px;padding-bottom:4px}
+.qt th{font-weight:500;color:var(--muted);padding:2px 4px;white-space:nowrap}
+.qt th.ax-ew{color:var(--ew)} .qt th.ax-ns{color:var(--ns);text-align:right}
+.qt th[colspan]{text-align:center;font-weight:600}
+.qt td{width:38px;height:34px;text-align:center;border-radius:6px;background:var(--surface2);font:600 13px var(--display);color:var(--fg)}
+.qt td.unseen{color:var(--muted);font-weight:400}
+.qt td.now{outline:2.5px solid var(--fg);outline-offset:1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}
+.chip{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.note{font-size:13px;color:var(--muted)}
+.nowvals{font-variant-numeric:tabular-nums;font-size:14px}
+.k{color:var(--keep);font-weight:600}.s{color:var(--switch);font-weight:600}
+
+.what{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+.what dt{font-weight:600;color:var(--muted)} .what dd{margin:0;min-width:0;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:1px 8px;margin-left:6px;border:1px solid var(--line);color:var(--muted)}
+.tag.rand{border-color:var(--wait);color:var(--fg);background:color-mix(in srgb,var(--wait) 25%,transparent)}
+
+.lab{font-size:13px;font-weight:600;color:var(--muted);margin-left:8px}
+.phase{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.phase li{font-size:12px;font-weight:500;line-height:1.25;color:var(--muted);border-top:3px solid var(--line);padding-top:6px}
+.phase li.on{color:var(--fg);font-weight:600;border-top-color:var(--accent)}
+.fill{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.track{flex:1;max-width:220px;height:6px;border-radius:3px;background:var(--surface2);overflow:hidden}
+.track div{height:100%;width:0;background:var(--accent)}
+.pager{display:flex;justify-content:space-between;gap:8px}
+@media (max-width:760px){ .stage,.lesson .cols{grid-template-columns:minmax(0,1fr)} .stage>.card:first-child{max-width:440px} }
+</style>
+</head>
+<body>
+<header class="site-band"><div class="in">
+  <a class="brand" href="index.html"><span aria-hidden="true"><i style="background:#E5484D"></i><i style="background:#F1C232"></i><i style="background:#2FBF6B"></i></span>RL ATSC Lab</a>
+  <nav aria-label="Site"><a href="index.html">Home</a><a href="foundation.html" aria-current="page">Foundation</a><a href="research.html">Research</a><a href="https://github.com/smrahmanbd/rl-atsc-lab">GitHub</a></nav>
+</div></header>
+<div class="wrap">
+<header>
+  <h1>Teaching a traffic light by trial and error</h1>
+  <p class="lede">One small intersection, six steps. You run the signal yourself, watch a table of scores learn the job from nothing, then see a small neural network do the same. One optional extra shows what happens when the world changes.</p>
+</header>
+
+<ol class="steps" id="steps"></ol>
+
+<section class="card lesson">
+  <h2 id="l-title"></h2>
+  <div class="cols">
+    <div class="text" id="l-text"></div>
+    <div class="try"><h3>Try this</h3><ol id="l-try"></ol></div>
+  </div>
+</section>
+
+<div class="controls" id="ctl-agent">
+  <button class="btn primary" id="play">Play</button>
+  <button class="btn" id="one">One move</button>
+  <div class="seg" id="speed" role="group" aria-label="Speed">
+    <button data-s="slow">Slow</button><button data-s="normal">Normal</button><button data-s="fast">Fast training</button>
+  </div>
+  <span class="spacer"></span>
+  <button class="btn" id="reset">Forget everything</button>
+</div>
+<div class="controls" id="ctl-world" hidden>
+  <button class="btn switch" id="works">Start roadworks</button>
+  <span class="lab">Learning</span>
+  <div class="seg" id="learn" role="group" aria-label="Learning"><button data-l="on">On</button><button data-l="off">Off</button></div>
+</div>
+<div class="controls" id="ctl-manual" hidden>
+  <button class="btn keep" id="m-keep">Keep the green</button>
+  <button class="btn switch" id="m-switch">Switch the lights</button>
+  <span class="spacer"></span>
+  <button class="btn" id="m-reset">Start over</button>
+</div>
+
+<div class="stage">
+  <section class="card">
+    <h3>The intersection</h3>
+    <canvas id="road" aria-label="Animated intersection with cars queueing on a North road and a West road"></canvas>
+    <div class="stats">
+      <div class="stat"><span>Seconds played</span><strong id="st-steps">0</strong></div>
+      <div class="stat"><span id="st-eps-l">Random moves</span><strong id="st-eps">–</strong></div>
+      <div class="stat"><span>Avg. cars waiting</span><strong id="st-avg">–</strong></div>
+    </div>
+    <ol class="phase" id="phase" hidden><li>Trying things</li><li>Getting better</li><li>Using what it learned</li></ol>
+    <p class="note" id="st-note"></p>
+  </section>
+
+  <div class="side">
+    <section class="card" id="p-q" hidden>
+      <h3>The agent's brain: a table of scores</h3>
+      <div class="fill"><span id="q-fill">Boxes visited: 0 of 32</span><div class="track"><div id="q-bar"></div></div></div>
+      <div class="scroll"><div class="qgrids" id="qgrids"></div></div>
+      <div class="legend">
+        <span><i class="chip" style="background:var(--keep)"></i>K = Keep scores higher</span>
+        <span><i class="chip" style="background:var(--switch)"></i>S = Switch scores higher</span>
+        <span>Stronger colour = more sure</span><span>· = never been here</span>
+      </div>
+      <p class="nowvals" id="q-now"></p>
+    </section>
+
+    <section class="card" id="p-nn" hidden>
+      <h3>The agent's brain: a small neural network</h3>
+      <canvas id="net" height="300" aria-label="Network diagram: 4 inputs, 8 hidden units, 2 output scores"></canvas>
+      <div class="legend">
+        <span>Solid line = pushes the score up</span><span>Dashed = pushes it down</span>
+        <span>Thicker = stronger weight</span><span>Darker circle = more active</span>
+      </div>
+      <p class="note" id="nn-mem"></p>
+    </section>
+
+    <section class="card">
+      <h3>What just happened</h3>
+      <dl class="what">
+        <dt>Saw</dt><dd id="w-saw">Nothing yet. Make the first move.</dd>
+        <dt>Chose</dt><dd id="w-chose">–</dd>
+        <dt>Reward</dt><dd id="w-rew">–</dd>
+        <dt>Learned</dt><dd id="w-learn">–</dd>
+      </dl>
+    </section>
+  </div>
+</div>
+
+<section class="card" id="p-chart">
+  <h3>Is it getting better? Average cars waiting (lower is better)</h3>
+  <canvas id="chart" height="190" aria-label="Line chart of average cars waiting during training"></canvas>
+</section>
+
+<div class="pager">
+  <button class="btn" id="prev">← Previous step</button>
+  <button class="btn primary" id="next">Next step →</button>
+</div>
+</div>
+
+<div class="wrap" style="padding-top:0"><section class="card"><h3>Go further</h3>
+<p>The <a href="materials/RL_Foundation_Study_Guide.pdf">Foundation study guide</a> works every idea in this lesson by hand, with a quiz and a one-page cheat sheet. The <a href="materials/RL_Foundation_Presentation.pptx">slides</a> cover the same ground for a lecture. The same Q-learning agent is available as <a href="https://github.com/smrahmanbd/rl-atsc-lab/blob/main/code/q_learning_intersection.py">plain Python</a>. When you are ready, the <a href="research.html">Research level</a> shows how these ideas are used on corridors and cities.</p></section></div>
+<footer class="site">Reinforcement Learning for Adaptive Traffic Signal Control, a module of <a href="https://github.com/smrahmanbd/ce677-traffic-control-and-operation">CE677 Traffic Control and Operation</a>. The lesson's numbers come from a small simulated junction and are illustrative. Results quoted from papers are the authors' reported figures.</footer>
+<script>
+/* ---------- The world: one intersection, two one-way roads ---------- */
+const CAP = 10;               // most cars a road can hold in its queue
+const RATE = [0.32, 0.16];    // chance a new car arrives each second: [North road, West road]
+const GAMMA = 0.9;            // discount: how much the future counts
+
+function makeEnv() { return { q: [3, 2], phase: 0, yellow: false, rate: RATE.slice(), yellowSecs: 1 }; }
+
+// action 0 = keep the current green, 1 = switch (costs yellow seconds in which nobody moves)
+function envStep(env, action) {
+  let departed = -1, reward = 0, secs = 1; const arrived = [0, 0];
+  if (action === 1) { env.phase = 1 - env.phase; env.yellow = true; secs = env.yellowSecs; }
+  else {
+    env.yellow = false;
+    if (env.q[env.phase] > 0) { env.q[env.phase]--; departed = env.phase; }
+  }
+  for (let t = 0; t < secs; t++) {
+    for (let d = 0; d < 2; d++) if (Math.random() < env.rate[d] && env.q[d] < CAP) { env.q[d]++; arrived[d]++; }
+    reward -= env.q[0] + env.q[1];           // one point lost per waiting car, every second
+  }
+  return { reward, departed, arrived, secs };
+}
+const snap = env => ({ ns: env.q[0], ew: env.q[1], phase: env.phase });
+
+/* ---------- Example 1: Q-table ---------- */
+const bucket = n => (n === 0 ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : 3);
+const boxOf = s => s.phase * 16 + bucket(s.ns) * 4 + bucket(s.ew);
+
+function makeQAgent() {
+  return {
+    kind: 'q', steps: 0, alpha: 0.2,
+    Q: Array.from({ length: 32 }, () => [0, 0]),
+    seen: new Array(32).fill(0),
+    eps() { return Math.max(0.05, 1 - this.steps / 2500); },
+    values(s) { return this.Q[boxOf(s)]; },
+    act(s) {
+      if (Math.random() < this.eps()) return { a: Math.random() < 0.5 ? 0 : 1, random: true };
+      const v = this.Q[boxOf(s)];
+      return { a: v[1] > v[0] ? 1 : 0, random: false };
+    },
+    learn(s, a, r, s2) {
+      const i = boxOf(s), j = boxOf(s2);
+      const before = this.Q[i][a];
+      const target = r + GAMMA * Math.max(this.Q[j][0], this.Q[j][1]);
+      this.Q[i][a] = before + this.alpha * (target - before);   // nudge toward the better guess
+      this.seen[i]++; this.steps++;
+      return { before, target, after: this.Q[i][a] };
+    }
+  };
+}
+
+/* ---------- Example 2: small neural network (4 inputs, 8 hidden, 2 outputs) ---------- */
+const NH = 8, NI = 4, RS = 10;   // RS: rewards are divided by 10 inside the network
+const feat = s => [s.ns / CAP, s.ew / CAP, s.phase === 0 ? 1 : 0, s.phase === 1 ? 1 : 0];
+
+function makeNet() {
+  const r = k => (Math.random() * 2 - 1) * k;
+  return {
+    W1: Array.from({ length: NH }, () => Array.from({ length: NI }, () => r(0.7))),
+    b1: Array.from({ length: NH }, () => 0),
+    W2: Array.from({ length: 2 }, () => Array.from({ length: NH }, () => r(0.4))),
+    b2: [0, 0]
+  };
+}
+function forward(net, x) {
+  const h = new Array(NH);
+  for (let j = 0; j < NH; j++) {
+    let z = net.b1[j];
+    for (let i = 0; i < NI; i++) z += net.W1[j][i] * x[i];
+    h[j] = Math.tanh(z);
+  }
+  const out = [net.b2[0], net.b2[1]];
+  for (let k = 0; k < 2; k++) for (let j = 0; j < NH; j++) out[k] += net.W2[k][j] * h[j];
+  return { h, out };
+}
+const copyNet = n => JSON.parse(JSON.stringify(n));
+
+function makeNNAgent() {
+  const net = makeNet();
+  return {
+    kind: 'nn', steps: 0, lr: 0.05, batch: 16, net, frozen: copyNet(net), memory: [],
+    eps() { return Math.max(0.05, 1 - this.steps / 3000); },
+    values(s) { return forward(this.net, feat(s)).out.map(v => v * RS); },
+    act(s) {
+      if (Math.random() < this.eps()) return { a: Math.random() < 0.5 ? 0 : 1, random: true };
+      const v = forward(this.net, feat(s)).out;
+      return { a: v[1] > v[0] ? 1 : 0, random: false };
+    },
+    targetFor(m) {
+      const nxt = forward(this.frozen, feat(m.s2)).out;
+      return m.r / RS + GAMMA * Math.max(nxt[0], nxt[1]);
+    },
+    trainOne(m) {
+      const x = feat(m.s), { h, out } = forward(this.net, x);
+      let err = out[m.a] - this.targetFor(m);
+      err = Math.max(-1, Math.min(1, err));
+      const g = this.lr / this.batch, n = this.net;
+      for (let j = 0; j < NH; j++) {
+        const dh = err * n.W2[m.a][j] * (1 - h[j] * h[j]);
+        n.W2[m.a][j] -= g * err * h[j];
+        for (let i = 0; i < NI; i++) n.W1[j][i] -= g * dh * x[i];
+        n.b1[j] -= g * dh;
+      }
+      n.b2[m.a] -= g * err;
+    },
+    learn(s, a, r, s2) {
+      const m = { s, a, r, s2 };
+      this.memory.push(m); if (this.memory.length > 3000) this.memory.shift();
+      const before = forward(this.net, feat(s)).out[a] * RS;
+      const target = this.targetFor(m) * RS;
+      for (let b = 0; b < this.batch; b++)           // learn from 16 random memories
+        this.trainOne(this.memory[(Math.random() * this.memory.length) | 0]);
+      this.steps++;
+      if (this.steps % 100 === 0) this.frozen = copyNet(this.net);
+      return { before, target, after: forward(this.net, feat(s)).out[a] * RS };
+    }
+  };
+}
+
+/* ---------- Baseline: a plain timer that switches every 5 seconds ---------- */
+function timerBaseline(n, change) {
+  const env = makeEnv(); let sum = 0, secs = 0; if (change) change(env);
+  for (let t = 0; t < n; t++) { const r = envStep(env, t % 5 === 4 ? 1 : 0); sum -= r.reward; secs += r.secs; }
+  return sum / secs;
+}
+/* ---------- Lesson text ---------- */
+const LESSONS = [
+ { name:'The game', sim:'manual',
+   title:'Step 1 · The game: you are the signal',
+   text:`<p>Two one-way roads cross. Cars queue on the <b style="color:var(--ns)">North road</b> and the <b style="color:var(--ew)">West road</b>. Every second you pick one of two moves: keep the current green, or switch. A switch costs one second of yellow in which nobody moves.</p>
+   <p>After every second you lose one point for each car still waiting. Those are the four words of reinforcement learning:</p>
+   <dl class="vocab"><dt>Agent</dt><dd>whoever controls the signal. Now you, soon a program.</dd>
+   <dt>State</dt><dd>cars waiting on each road, and which road has green.</dd>
+   <dt>Action</dt><dd>keep or switch.</dd>
+   <dt>Reward</dt><dd>minus one point per waiting car, every second.</dd></dl>`,
+   tryThis:['Press <b>Keep green</b> a few times and watch the North cars drain.','Press <b>Switch</b> once when the West road gets long. The lights show yellow for a moment, then West turns green. Then press <b>Keep green</b> to let the West cars go.','Your rival is a plain timer that switches every 5 seconds. Try to get your average below its number.'] },
+ { name:'An empty table', sim:'q',
+   title:'Step 2 · Start with an empty table and try things',
+   text:`<p>Now a program takes over. It knows nothing about traffic. All it has is an empty table with one box for every situation it can be in.</p>
+   <p>Each box will hold two scores: how good is <span class="k">Keep</span> here, and how good is <span class="s">Switch</span> here. Since every box is empty, it cannot choose well yet. So it makes <b>random moves</b>: it ignores the table and flips a coin between Keep and Switch, then sees what reward comes back.</p>
+   <p>After each move it writes what it found into the box it was in: <b>new score = reward I just got + 0.9 × best score in the box I landed in</b>. The old score moves part of the way toward that.</p>
+   <p class="note">A box is picked by the two queue lengths (cars waiting on each road) and which road has green. To keep the table small, queue lengths are grouped into 0, 1–2, 3–5 and 6+. That gives 4 × 4 × 2 = 32 boxes.</p>`,
+   tryThis:['Press <b>One move</b> several times. After each one, read “What just happened” from top to bottom.','Look for the “random move” tag. At this stage every move is a coin flip, because the table has nothing useful in it yet.','Watch boxes get their first letter as the agent visits them. The outlined box is where it is now.'] },
+ { name:'Practice fills the table', sim:'q',
+   title:'Step 3 · Practice fills the table',
+   text:`<p>One move teaches one box a little. So the agent needs thousands of moves.</p><p>Before each move it decides how to choose. A <b>random move</b> is a coin flip between Keep and Switch, to try something new. A <b>table move</b> looks up the box and takes the higher score. “Random moves 100%” means every move is a coin flip. “Random moves 5%” means about 1 move in 20 is a coin flip and the other 19 follow the table. The share falls as the table fills. This is the epsilon-greedy idea: explore a lot at first, then mostly use what you know.</p>
+   <p>The chart at the bottom shows how many cars wait on average. The dashed line is the plain 5-second timer. When the agent's line drops below it, the table has learned to react to traffic, which a timer cannot do.</p>`,
+   tryThis:['Choose <b>Fast training</b> and press <b>Play</b>. Watch “Boxes visited” climb to 32 and “Random moves” fall to 5%.','Keep going for about 10 seconds, until the chart line settles under the dashed line.','Press <b>Pause</b>. The table is now filled in.'] },
+ { name:'Now it knows', sim:'q',
+   title:'Step 4 · Now it knows what to do',
+   text:`<p>Choosing a move is now a simple lookup. The agent finds the box for the current situation, compares the two scores, and takes the higher one. Nothing else happens when it decides.</p>
+   <p>Read the table as a rulebook. K means “in this situation, keep the green”. S means “switch”. Nobody typed these rules in. They came out of trial, error and reward.</p>
+   <p>It still makes a random move 5% of the time: about 1 move in 20 is a coin flip instead of a lookup. That keeps it checking whether a different move has become better.</p>
+   <p class="note">If the table is still mostly empty, go back to step 3 and train it first.</p>`,
+   tryThis:['Choose <b>Slow</b> and press <b>Play</b>. Compare how it drives now with the fumbling in step 2.','Follow the outlined box as it jumps around the table. The letter in it is the move it takes.','Find the box “North queue 0, West queue 3–5” while North has green. It should say S: nothing to serve on North, cars waiting on West.'] },
+ { name:'Swap in a network', sim:'nn',
+   title:'Step 5 · Swap the table for a neural network',
+   text:`<p>A table needs one box per situation. That works for 32 situations and fails for millions. A neural network replaces the table with a formula: the state goes in on the left (exact car counts, no grouping), and the two scores come out on the right.</p>
+   <p>The lines are 58 adjustable numbers called weights. The learning rule is the same as before: the predicted score should move toward <b>reward + 0.9 × best next score</b>. What differs is where the knowledge sits. Instead of one box, the network nudges all its weights slightly.</p>
+   <p>The weights change after every move, by a tiny amount. Each move is saved to a memory, and the network practises on 16 memories picked at random, so one odd moment cannot throw it off.</p>`,
+   tryThis:['Press <b>One move</b> and compare the two output scores with the move it chose.','In “What just happened”, compare the network\'s guess with the better guess. Learning shrinks that gap.','Step a few more times and watch line thickness shift slightly. That is the weights changing.'] },
+ { name:'Train it and compare', sim:'nn',
+   title:'Step 6 · Train the network and compare',
+   text:`<p>The network goes through the same three phases: try things, improve, then use what it learned. It needs more moves than the table, because every update shifts all the weights at once and they have to settle together.</p>
+   <p>What you get in return: the network never looks up “the most similar past situation”. Similar inputs simply give similar outputs, because they pass through the same weights. So it gives a sensible score for a state it has never seen exactly.</p>
+   <div class="scroll"><table class="cmp"><tr><th></th><th>Table</th><th>Network</th></tr>
+   <tr><th>Stores</th><td>64 scores, one per box and move</td><td>58 shared weights</td></tr>
+   <tr><th>Sees</th><td>grouped counts</td><td>exact counts</td></tr>
+   <tr><th>One update changes</th><td>one score</td><td>every weight, slightly</td></tr>
+   <tr><th>Huge problems</th><td>table explodes</td><td>same network, more inputs</td></tr>
+   <tr><th>World changes</th><td>must relearn box by box</td><td>must also relearn, by more training</td></tr></table></div>`,
+   tryThis:['Choose <b>Fast training</b> and press <b>Play</b> for about 20 seconds, until the line is under the timer.','Go back to <b>Slow</b> and watch the two output scores flip as the queues change.','Return to step 3 and compare the two charts. Which learned faster?','Curious what happens if the traffic rules change after training? The extra step covers that.'] },
+ { name:'If the world changes', sim:'q',
+   extra:true,
+   title:'Extra · What if the world changes?',
+   text:`<p>Think of a robot that learned a room, and then someone adds a sofa. Its table has no idea. The scores were measured in the old room, and they are just numbers in boxes. The agent finds out only one way: it does what the table says, the result is worse than the score promised, and that bad reward gets written into the box.</p>
+   <p>Here the change is roadworks: every switch now takes 3 seconds instead of 1, and the busy traffic moves to the West road. The old table switches too eagerly for this world.</p>
+   <p>Two things decide what happens next:</p>
+   <dl class="vocab"><dt>Learning off</dt><dd>the table is frozen. It repeats the old habits and stays bad.</dd>
+   <dt>Learning on</dt><dd>each bad result corrects one box. It recovers, slowly, and only in boxes it visits again.</dd></dl>
+   <p class="note">One limit remains. The table can only react to what the state describes. If the change is invisible in the state, two different situations share one box and the table cannot tell them apart. Describing more means more boxes, and that is why step 5 swapped the table for a network.</p>`,
+   tryThis:['Set <b>Learning</b> to <b>Off</b>, press <b>Start roadworks</b>, then <b>Fast training</b> and <b>Play</b> for 5 seconds. The line usually jumps well above where it was and stays there. Now and then the old table copes; that depends on what it happened to learn.','Set <b>Learning</b> to <b>On</b> and keep playing for about 15 seconds. The line comes back down as boxes are rewritten. It will not reach the old level, because this world is harder.','Look at the table again. Some boxes changed their letter. Those are the rules it had to rewrite for the new world.'] }
+];
+
+/* ---------- Simulations (one per learner, kept while you move between steps) ---------- */
+const ROADWORKS = env => { env.yellowSecs = 3; env.rate = [0.16, 0.32]; };
+const NORMAL = env => { env.yellowSecs = 1; env.rate = RATE.slice(); };
+const TIMERS = [timerBaseline(40000), timerBaseline(40000, ROADWORKS)];
+const timerNow = () => TIMERS[sim.env.yellowSecs > 1 ? 1 : 0];
+const WEIGHTS = NH * NI + NH + 2 * NH + 2;
+function makeSim(kind) {
+  const env = makeEnv();
+  return { kind, env, agent: kind === 'q' ? makeQAgent() : kind === 'nn' ? makeNNAgent() : null,
+    cars: env.q.map(n => Array.from({ length: n }, (_, i) => ({ pos: i }))), passing: [],
+    steps: 0, secs: 0, hist: [], marks: [], acc: 0, accSecs: 0, recent: [], last: null, learning: true };
+}
+const sims = { manual: makeSim('manual'), q: makeSim('q'), nn: makeSim('nn') };
+let stepIdx = 0, sim = sims.manual, playing = false, speed = 'slow', dirty = true;
+
+function advance(sm, manualAction) {
+  const s = snap(sm.env);
+  let a = manualAction, random = false;
+  if (sm.agent) ({ a, random } = sm.agent.act(s));
+  const res = envStep(sm.env, a), s2 = snap(sm.env);
+  const info = sm.agent && sm.learning ? sm.agent.learn(s, a, res.reward, s2) : null;
+  if (res.departed >= 0) { sm.cars[res.departed].shift(); sm.passing.push({ d: res.departed, t: 0 }); }
+  res.arrived.forEach((n, d) => { for (let k = 0; k < n; k++) sm.cars[d].push({ pos: sm.cars[d].length + 3 }); });
+  sm.steps++; sm.secs += res.secs; sm.acc -= res.reward; sm.accSecs += res.secs;
+  sm.recent.push([-res.reward, res.secs]); if (sm.recent.length > 200) sm.recent.shift();
+  if (sm.steps % 200 === 0) {
+    sm.hist.push(sm.acc / sm.accSecs); sm.acc = 0; sm.accSecs = 0;
+  }
+  sm.last = { s, a, random, r: res.reward, secs: res.secs, info };
+  if (a === 1) sm.yellowAt = performance.now();
+  dirty = true;
+}
+
+/* ---------- Drawing helpers ---------- */
+const $ = id => document.getElementById(id);
+let C = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['bg','surface','surface2','fg','muted','line','accent','ground','road','mark','ns','ew','keep','switch','go','wait','stop','lampoff'])
+    C[k] = cs.getPropertyValue('--' + k).trim();
+}
+function fit(cv, h) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, hh = h || w;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(hh * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(hh * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h: hh };
+}
+const num = (v, d = 1) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+/* ---------- The intersection ---------- */
+const CX = 268, HW = 24, SLOT = 22;
+function drawRoad() {
+  const { ctx, w } = fit($('road')); const k = w / 400; ctx.scale(k, k);
+  const e = sim.env;
+  // yellow is shown for a moment after a switch, then the new road turns green by itself
+  const yellow = e.yellow && performance.now() - (sim.yellowAt || 0) < 650;
+  ctx.fillStyle = C.ground; ctx.fillRect(0, 0, 400, 400);
+  ctx.fillStyle = C.road; ctx.fillRect(CX - HW, 0, HW * 2, 400); ctx.fillRect(0, CX - HW, 400, HW * 2);
+  ctx.strokeStyle = C.mark; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(CX - HW, CX - HW - 3); ctx.lineTo(CX + HW, CX - HW - 3);
+  ctx.moveTo(CX - HW - 3, CX - HW); ctx.lineTo(CX - HW - 3, CX + HW); ctx.stroke();
+  // cars waiting
+  for (let d = 0; d < 2; d++) {
+    ctx.fillStyle = d === 0 ? C.ns : C.ew;
+    const draw = front => { d === 0 ? rr(ctx, CX - 8, front - 17, 16, 17, 4) : rr(ctx, front - 17, CX - 8, 17, 16, 4); ctx.fill(); };
+    sim.cars[d].forEach(c => draw(CX - HW - 8 - c.pos * SLOT));
+    sim.passing.forEach(p => { if (p.d === d) draw(CX - HW - 8 + p.t); });
+  }
+  // signals
+  const lamp = d => yellow ? (d === e.phase ? 'stop' : 'wait') : (d === e.phase ? 'go' : 'stop');
+  const housing = (x, y, vertical, state) => {
+    ctx.fillStyle = '#12171c'; rr(ctx, x, y, vertical ? 16 : 44, vertical ? 44 : 16, 5); ctx.fill();
+    ['stop', 'wait', 'go'].forEach((n, i) => {
+      ctx.fillStyle = state === n ? C[n] : C.lampoff; ctx.globalAlpha = state === n ? 1 : .55;
+      ctx.beginPath(); ctx.arc(vertical ? x + 8 : x + 8 + i * 14, vertical ? y + 8 + i * 14 : y + 8, 5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+    });
+  };
+  housing(CX + HW + 8, CX - HW - 50, true, lamp(0));
+  housing(CX - HW - 50, CX + HW + 8, false, lamp(1));
+  // labels
+  ctx.font = '600 13px Inter, system-ui, sans-serif'; ctx.textBaseline = 'top';
+  ctx.fillStyle = C.fg; ctx.textAlign = 'left';
+  ctx.fillText('North road', CX + HW + 10, 10);
+  ctx.fillText('West road', 10, CX + HW + 34);
+  ctx.font = '500 12px Inter, system-ui, sans-serif'; ctx.fillStyle = C.muted;
+  ctx.fillText(e.q[0] + ' waiting', CX + HW + 10, 28);
+  ctx.fillText(e.q[1] + ' waiting', 10, CX + HW + 52);
+  ctx.textAlign = 'left'; ctx.fillStyle = C.fg;
+  if (e.yellowSecs > 1) { ctx.fillStyle = C.switch; ctx.fillText('Roadworks: a switch takes 3 seconds', 10, 32); ctx.fillStyle = C.fg; }
+  ctx.fillText(yellow ? 'Yellow: switching, nobody moves' : (e.phase === 0 ? 'North' : 'West') + ' road has green', 10, 12);
+}
+function moveCars(snapNow) {
+  for (const q of sim.cars) q.forEach((c, i) => { c.pos = snapNow ? i : c.pos + (i - c.pos) * 0.22; });
+  if (snapNow) sim.passing.length = 0;
+  else { sim.passing.forEach(p => p.t += 7); sim.passing = sim.passing.filter(p => p.t < 190); }
+}
+
+/* ---------- Q-table view ---------- */
+const BL = ['0', '1–2', '3–5', '6+'];
+function buildQ() {
+  $('qgrids').innerHTML = [0, 1].map(p => `<table class="qt"><caption>While the ${p ? 'West' : 'North'} road has green</caption>
+    <tr><th></th><th colspan="4" class="ax-ew">West queue (cars waiting)</th></tr>
+    <tr><th class="ax-ns">North queue</th>${BL.map(b => `<th class="ax-ew">${b}</th>`).join('')}</tr>
+    ${BL.map((b, r) => `<tr><th class="ax-ns">${b}</th>${BL.map((_, c) => `<td id="q${p * 16 + r * 4 + c}"></td>`).join('')}</tr>`).join('')}</table>`).join('');
+}
+function drawQ() {
+  const ag = sims.q.agent, here = boxOf(snap(sims.q.env));
+  for (let i = 0; i < 32; i++) {
+    const td = $('q' + i), v = ag.Q[i];
+    td.className = (ag.seen[i] ? '' : 'unseen') + (i === here ? ' now' : '');
+    if (!ag.seen[i]) { td.textContent = '·'; td.style.background = ''; continue; }
+    const diff = v[0] - v[1], pct = Math.round(16 + Math.min(1, Math.abs(diff) / 2) * 54);
+    td.textContent = diff >= 0 ? 'K' : 'S';
+    td.style.background = `color-mix(in srgb, var(--${diff >= 0 ? 'keep' : 'switch'}) ${pct}%, var(--surface2))`;
+  }
+  const v = ag.Q[here], filled = ag.seen.filter(n => n).length;
+  $('q-fill').textContent = `Boxes visited: ${filled} of 32`; $('q-bar').style.width = (filled / 32 * 100) + '%';
+  $('q-now').innerHTML = `Scores in the outlined box: <span class="k">Keep ${num(v[0], 2)}</span> · <span class="s">Switch ${num(v[1], 2)}</span>`;
+}
+
+/* ---------- Network view ---------- */
+function drawNet() {
+  const { ctx, w, h } = fit($('net'), 300); ctx.clearRect(0, 0, w, h);
+  const ag = sims.nn.agent, s = snap(sims.nn.env), x = feat(s), f = forward(ag.net, x);
+  const xi = 108, xo = w - 104, xh = (xi + xo) / 2;
+  const ys = (n, i) => h * (i + 0.5) / n;
+  ctx.strokeStyle = C.fg; ctx.lineCap = 'round';
+  const edge = (x1, y1, x2, y2, wt) => {
+    ctx.globalAlpha = 0.14 + Math.min(0.6, Math.abs(wt) * 0.45); ctx.lineWidth = 0.4 + Math.min(4, Math.abs(wt) * 2.4);
+    ctx.setLineDash(wt < 0 ? [5, 5] : []); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  };
+  for (let j = 0; j < NH; j++) {
+    for (let i = 0; i < NI; i++) edge(xi, ys(NI, i), xh, ys(NH, j), ag.net.W1[j][i]);
+    for (let k = 0; k < 2; k++) edge(xh, ys(NH, j), xo, ys(2, k), ag.net.W2[k][j]);
+  }
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  const node = (px, py, r, act, ring) => {
+    ctx.fillStyle = C.surface; ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+    ctx.fillStyle = C.fg; ctx.globalAlpha = Math.min(1, Math.abs(act)) * 0.85; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = ring || C.fg; ctx.lineWidth = ring ? 3.5 : 1.4; ctx.stroke(); ctx.strokeStyle = C.fg;
+  };
+  ctx.font = '500 12px Inter, system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  const inL = [['North cars', s.ns], ['West cars', s.ew], ['North green', x[2]], ['West green', x[3]]];
+  inL.forEach(([l, v], i) => { node(xi, ys(NI, i), 9, x[i]); ctx.fillStyle = C.fg; ctx.textAlign = 'right'; ctx.fillText(l + '  ' + v, xi - 15, ys(NI, i)); });
+  for (let j = 0; j < NH; j++) node(xh, ys(NH, j), 7, f.h[j]);
+  const best = f.out[1] > f.out[0] ? 1 : 0;
+  ['Keep', 'Switch'].forEach((l, k) => {
+    node(xo, ys(2, k), 10, k === best ? 1 : 0.1, k === 0 ? C.keep : C.switch);
+    ctx.textAlign = 'left'; ctx.fillStyle = k === 0 ? C.keep : C.switch; ctx.font = '600 13px Inter, system-ui, sans-serif';
+    ctx.fillText(l, xo + 17, ys(2, k) - 8);
+    ctx.fillStyle = C.fg; ctx.font = '500 12px Inter, system-ui, sans-serif'; ctx.fillText(num(f.out[k] * RS, 1), xo + 17, ys(2, k) + 9);
+  });
+  $('nn-mem').textContent = `Memory holds ${ag.memory.length.toLocaleString()} past moves. ${WEIGHTS} weights in total.`;
+}
+
+/* ---------- Chart ---------- */
+function drawChart() {
+  const { ctx, w, h } = fit($('chart'), 190); ctx.clearRect(0, 0, w, h);
+  const L = 30, R = 54, T = 10, B = 26, pw = w - L - R, ph = h - T - B, YM = 15;
+  const hist = sim.hist, n = Math.max(30, hist.length);
+  const X = i => L + pw * (i + 1) / n, Y = v => T + ph * (1 - Math.min(v, YM) / YM);
+  ctx.font = '500 11px Inter, system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  for (let v = 0; v <= YM; v += 2.5) {
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + pw, Y(v)); ctx.stroke();
+    if (v % 5 === 0) { ctx.fillStyle = C.muted; ctx.textAlign = 'right'; ctx.fillText(v, L - 6, Y(v)); }
+  }
+  ctx.setLineDash([6, 5]); ctx.strokeStyle = C.muted; ctx.lineWidth = 1.5;
+  ctx.beginPath(); const TIMER = timerNow(); ctx.moveTo(L, Y(TIMER)); ctx.lineTo(L + pw, Y(TIMER)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.fillText('timer ' + TIMER.toFixed(1), L + pw + 6, Y(TIMER));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`moves made so far (0 to ${(n * 200).toLocaleString()})`, L + pw / 2, h - 6);
+  sim.marks.forEach(([i, label]) => { const mx = L + pw * i / n; ctx.strokeStyle = C.switch; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(mx, T); ctx.lineTo(mx, T + ph); ctx.stroke();
+    ctx.fillStyle = C.switch; ctx.textAlign = mx > L + pw - 90 ? 'right' : 'left'; ctx.fillText(label, mx + (mx > L + pw - 90 ? -5 : 5), T + 10); });
+  ctx.fillStyle = C.muted; ctx.textAlign = 'center';
+  if (!hist.length) { ctx.fillStyle = C.fg; ctx.font = '500 13px Inter, system-ui, sans-serif'; ctx.fillText('The line appears after the first 200 moves.', L + pw / 2, T + ph * 0.3); return; }
+  ctx.strokeStyle = C.accent; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.beginPath();
+  hist.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.stroke();
+  const lv = hist[hist.length - 1], lx = X(hist.length - 1);
+  ctx.fillStyle = C.accent; ctx.beginPath(); ctx.arc(lx, Y(lv), 4, 0, 7); ctx.fill();
+  ctx.font = '600 12px Inter, system-ui, sans-serif'; ctx.textAlign = lx > L + pw - 30 ? 'right' : 'left';
+  ctx.fillText(lv.toFixed(1), lx + (lx > L + pw - 30 ? -8 : 8), Y(lv) - 8);
+}
+
+/* ---------- Text panels ---------- */
+function drawText() {
+  const ag = sim.agent, l = sim.last;
+  const TIMER = timerNow();
+  $('m-keep').textContent = `Keep green on ${sim.env.phase ? 'West' : 'North'} road`;
+  $('m-switch').textContent = `Switch: give green to ${sim.env.phase ? 'North' : 'West'} road`;
+  $('st-steps').textContent = sim.secs.toLocaleString();
+  $('st-eps-l').textContent = ag ? 'Random moves (coin flips)' : 'Timer\'s average';
+  $('st-eps').textContent = ag ? Math.round(ag.eps() * 100) + '%' : TIMER.toFixed(1);
+  const avg = sim.recent.length ? sim.recent.reduce((a, b) => a + b[0], 0) / sim.recent.reduce((a, b) => a + b[1], 0) : null;
+  const e = ag ? ag.eps() : 0, ph = !ag ? -1 : e > 0.6 ? 0 : e > 0.05 ? 1 : 2;
+  $('phase').hidden = !ag; [...$('phase').children].forEach((el, k) => el.classList.toggle('on', k === ph));
+  $('st-avg').textContent = avg === null ? '–' : avg.toFixed(1);
+  $('st-note').textContent = ag ? `Random moves: how often the agent ignores its table and flips a coin between Keep and Switch. The average is over the last 200 moves; the 5-second timer averages ${TIMER.toFixed(1)}.` : 'Average is over your last 200 moves. Lower is better.';
+  if (!l) { $('w-saw').textContent = 'Nothing yet. Make the first move.'; ['w-chose', 'w-rew', 'w-learn'].forEach(id => $(id).textContent = '–'); return; }
+  const road = p => (p ? 'West' : 'North');
+  $('w-saw').innerHTML = `North road ${l.s.ns} waiting, West road ${l.s.ew} waiting, ${road(l.s.phase)} has green` +
+    (sim.kind === 'q' ? `<br><span class="note">That is the box “North queue ${BL[bucket(l.s.ns)]}, West queue ${BL[bucket(l.s.ew)]}”.</span>` : '');
+  const nm = l.a ? '<span class="s">Switch</span>' : '<span class="k">Keep</span>';
+  $('w-chose').innerHTML = nm + (ag ? (l.random ? '<span class="tag rand">random move (coin flip)</span>' : '<span class="tag">table move (higher score)</span>') : '<span class="tag">your choice</span>');
+  $('w-rew').textContent = `${num(l.r, 0)}  ` + (l.secs > 1 ? `(the switch took ${l.secs} seconds, and each waiting car costs a point every second)` : `(${-l.r} car${l.r === -1 ? '' : 's'} waiting afterwards)`);
+  const word = l.a ? 'Switch' : 'Keep';
+  $('w-learn').innerHTML = !ag ? 'Nothing is learning yet. You are the brain in this step.'
+    : !l.info ? 'Learning is switched off, so the table did not change.'
+    : sim.kind === 'q' ? `Score for “${word}” in that box: <b>${num(l.info.before, 2)} → ${num(l.info.after, 2)}</b><br><span class="note">It moved a little toward the better guess, ${num(l.info.target, 2)}.</span>`
+    : `The network guessed <b>${num(l.info.before, 2)}</b> for “${word}”. The better guess was <b>${num(l.info.target, 2)}</b>.<br><span class="note">All ${WEIGHTS} weights were nudged slightly, using 16 random memories.</span>`;
+}
+
+/* ---------- Steps and controls ---------- */
+function showStep(i, fromHash) {
+  stepIdx = Math.max(0, Math.min(LESSONS.length - 1, i)); const L = LESSONS[stepIdx];
+  sim = sims[L.sim]; playing = false; moveCars(true);
+  const world = !!L.extra;
+  if (!world && sim.agent) { if (sim.env.yellowSecs > 1) { NORMAL(sim.env); sim.marks.push([sim.hist.length, 'roadworks end']); } sim.learning = true; }
+  $('ctl-world').hidden = !world; syncWorld();
+  $('l-title').textContent = L.title; $('l-text').innerHTML = L.text;
+  $('l-try').innerHTML = L.tryThis.map(t => `<li>${t}</li>`).join('');
+  [...$('steps').children].forEach((li, k) => li.firstChild.toggleAttribute('aria-current', false) || (k === stepIdx && li.firstChild.setAttribute('aria-current', 'step')));
+  $('ctl-agent').hidden = !sim.agent; $('ctl-manual').hidden = !!sim.agent;
+  $('p-q').hidden = L.sim !== 'q'; $('p-nn').hidden = L.sim !== 'nn'; $('p-chart').hidden = !sim.agent;
+  $('prev').disabled = stepIdx === 0; $('next').disabled = stepIdx === LESSONS.length - 1;
+  $('prev').style.visibility = stepIdx === 0 ? 'hidden' : ''; $('next').style.visibility = stepIdx === LESSONS.length - 1 ? 'hidden' : '';
+  setSpeed(stepIdx === 2 || stepIdx >= 5 ? speed : 'slow');
+  if (!fromHash) { try { history.replaceState(null, '', '#step-' + (stepIdx + 1)); } catch (e) { location.hash = 'step-' + (stepIdx + 1); } }
+  syncPlay(); dirty = true;
+}
+function setSpeed(s) { speed = s; [...$('speed').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.s === s)); }
+function syncWorld() {
+  const on = sim.env.yellowSecs > 1;
+  $('works').textContent = on ? 'End roadworks' : 'Start roadworks';
+  [...$('learn').children].forEach(b => b.setAttribute('aria-pressed', (b.dataset.l === 'on') === sim.learning));
+}
+function syncPlay() { $('play').textContent = playing ? 'Pause' : 'Play'; }
+function resetSim() { const k = sim.kind; sims[k] = makeSim(k); sim = sims[k]; playing = false; syncPlay(); dirty = true; }
+
+$('steps').innerHTML = LESSONS.map((l, i) => `<li><button data-i="${i}"><b>${l.extra ? '+' : i + 1}</b>${l.name}</button></li>`).join('');
+$('steps').addEventListener('click', e => { const b = e.target.closest('button'); if (b) showStep(+b.dataset.i); });
+$('prev').onclick = () => { showStep(stepIdx - 1); $('steps').scrollIntoView({ block: 'start' }); };
+$('next').onclick = () => { showStep(stepIdx + 1); $('steps').scrollIntoView({ block: 'start' }); };
+$('play').onclick = () => { playing = !playing; syncPlay(); };
+$('one').onclick = () => { playing = false; syncPlay(); advance(sim); };
+$('speed').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setSpeed(b.dataset.s); });
+$('works').onclick = () => { const on = sim.env.yellowSecs > 1; (on ? NORMAL : ROADWORKS)(sim.env); sim.marks.push([sim.hist.length, on ? 'roadworks end' : 'roadworks start']); syncWorld(); dirty = true; };
+$('learn').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { sim.learning = b.dataset.l === 'on'; syncWorld(); dirty = true; } });
+$('reset').onclick = () => { resetSim(); syncWorld(); }; $('m-reset').onclick = resetSim;
+$('m-keep').onclick = () => advance(sim, 0); $('m-switch').onclick = () => advance(sim, 1);
+window.addEventListener('hashchange', () => { const m = /^#step-(\d)$/.exec(location.hash); if (m && +m[1] - 1 !== stepIdx) showStep(+m[1] - 1, true); });
+window.addEventListener('resize', () => dirty = true);
+
+/* ---------- Main loop ---------- */
+let prevT = 0, bank = 0, lastDom = 0, lastCol = -1e9;
+function frame(t) {
+  const dt = Math.min(100, t - prevT); prevT = t;
+  if (t - lastCol > 600) { readColors(); lastCol = t; dirty = true; }
+  const fast = playing && speed === 'fast';
+  if (playing && sim.agent) {
+    if (fast) for (let i = 0; i < 12; i++) advance(sim);
+    else { bank += dt; const gap = speed === 'slow' ? 750 : 180; if (bank >= gap) { bank = 0; advance(sim); } }
+  }
+  moveCars(fast); drawRoad();
+  if (dirty && (!fast || t - lastDom > 90)) {
+    lastDom = t; dirty = false; drawText();
+    if (sim.kind === 'q') drawQ(); if (sim.kind === 'nn') drawNet(); if (sim.agent) drawChart();
+  }
+  requestAnimationFrame(frame);
+}
+buildQ(); readColors();
+const m0 = /^#step-(\d)$/.exec(location.hash);
+showStep(m0 ? +m0[1] - 1 : 0, true);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

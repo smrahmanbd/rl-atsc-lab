@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RL ATSC Lab</title>
+<meta name="description" content="Reinforcement learning for adaptive traffic signal control: an interactive lesson, study guides, slides and research ideas for CE677.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<header class="site-band"><div class="in">
+  <a class="brand" href="index.html"><span aria-hidden="true"><i style="background:#E5484D"></i><i style="background:#F1C232"></i><i style="background:#2FBF6B"></i></span>RL ATSC Lab</a>
+  <nav aria-label="Site"><a href="index.html" aria-current="page">Home</a><a href="foundation.html">Foundation</a><a href="research.html">Research</a><a href="https://github.com/smrahmanbd/rl-atsc-lab">GitHub</a></nav>
+</div></header>
+<main class="page">
+<span class="eyebrow">CE677 Traffic Control and Operation · module</span>
+<h1>Reinforcement learning for adaptive traffic signal control</h1>
+<p class="lede">How a signal controller can learn good timing from trial, error and reward. The module has two levels: Foundation teaches the method from zero on one small junction, and Research shows what has been built with it, what still fails, and where you could contribute.</p>
+<div class="btns"><a class="btn" href="foundation.html">Start the Foundation lesson</a><a class="btn ghost" href="research.html">Go to Research</a></div>
+
+<div class="grid">
+  <section class="card"><span class="tag s">Foundation · beginner</span><h3>A traffic light that starts out knowing nothing</h3>
+    <ul><li>Agent, state, action and reward at one junction</li><li>The Q-table and its one update rule, worked by hand</li><li>Why the agent makes random moves, and fewer over time</li><li>What a neural network changes</li></ul>
+    <div class="links"><a href="foundation.html">Interactive lesson</a><a href="materials/RL_Foundation_Study_Guide.pdf">Study guide (PDF)</a><a href="materials/RL_Foundation_Presentation.pptx">Slides (PPTX)</a><a href="materials/RL_Foundation_Presentation.pdf">Slides (PDF)</a></div></section>
+  <section class="card"><span class="tag a">Research</span><h3>From one learning junction to a learning city</h3>
+    <ul><li>Where RL sits among fixed-time, actuated, adaptive and max-pressure control</li><li>Pressure, landmark methods and multi-agent control</li><li>How results are tested, and seven gaps before deployment</li><li>Eight research ideas with a first experiment for each</li></ul>
+    <div class="links"><a href="research.html">Research page</a><a href="materials/RL_Research_Study_Guide.pdf">Study guide (PDF)</a><a href="materials/RL_Research_Presentation.pptx">Slides (PPTX)</a><a href="materials/RL_Research_Presentation.pdf">Slides (PDF)</a></div></section>
+</div>
+
+<h2>What is in the module</h2>
+<div class="scroll"><table>
+<tr><th>Item</th><th>Foundation</th><th>Research</th></tr>
+<tr><td>Online</td><td><a href="foundation.html">Six-step interactive lesson</a> with a live junction, a Q-table and a small neural network</td><td><a href="research.html">Research page</a> with a pressure calculator, timeline, gaps and ideas</td></tr>
+<tr><td>Study guide</td><td><a href="materials/RL_Foundation_Study_Guide.pdf">PDF, 23 pages</a>: 7 concepts, hand calculations, quiz, cheat sheet</td><td><a href="materials/RL_Research_Study_Guide.pdf">PDF, 27 pages</a>: 7 concepts, 8 ideas, 37 checked references</td></tr>
+<tr><td>Slides</td><td><a href="materials/RL_Foundation_Presentation.pptx">PPTX</a> · <a href="materials/RL_Foundation_Presentation.pdf">PDF</a> (15 slides)</td><td><a href="materials/RL_Research_Presentation.pptx">PPTX</a> · <a href="materials/RL_Research_Presentation.pdf">PDF</a> (16 slides)</td></tr>
+<tr><td>Code</td><td><a href="https://github.com/smrahmanbd/rl-atsc-lab/blob/main/code/q_learning_intersection.py">q_learning_intersection.py</a>: the lesson's Q-learning in plain Python</td><td><a href="https://github.com/smrahmanbd/rl-atsc-lab/blob/main/research/literature.md">literature.md</a> and <a href="https://github.com/smrahmanbd/rl-atsc-lab/blob/main/research/references.json">references.json</a></td></tr>
+</table></div>
+
+<h2>How it fits the course</h2>
+<p>This module sits beside the <a href="https://smrahmanbd.github.io/scats-learning-lab/">SCATS</a>, <a href="https://smrahmanbd.github.io/scoot-learning-lab/">SCOOT</a> and <a href="https://smrahmanbd.github.io/agentic-atsc-lab/">Agentic ATSC</a> labs. SCATS and SCOOT are adaptive systems built on designed rules. Here the controller learns its rule. The Agentic ATSC lab then uses a learning agent as one of several tools, with a hands-on Q-learning lab in SUMO.</p>
+<p class="note">All numbers in the Foundation lesson come from a small simulated junction with two one-way roads and are illustrative. It has no pedestrians, turning movements or minimum green times.</p>
+</main>
+<footer class="site">Reinforcement Learning for Adaptive Traffic Signal Control, a module of <a href="https://github.com/smrahmanbd/ce677-traffic-control-and-operation">CE677 Traffic Control and Operation</a>. The lesson's numbers come from a small simulated junction and are illustrative. Results quoted from papers are the authors' reported figures.</footer>
+</body>
+</html>
